@@ -1,0 +1,23 @@
+{
+  "name": "stale-cache",
+  "description": "P2: stale in-memory cache after a schema rollback. Non-destructive fix (rolling restart), fully autonomous. One transient kube-apiserver timeout exercises retry.",
+  "alert": {
+    "rule": "CacheChecksumMismatch",
+    "severity": "P2",
+    "summary": "catalog-api 5xx rate 14% (cache checksum mismatch)",
+    "description": "Prometheus: rate(http_requests_total{status=~\"5..\",app=\"catalog-api\"}[5m]) / rate(http_requests_total[5m]) > 0.05 for 5m",
+    "labels": {"cluster": "aws-eks-prod-use1", "namespace": "shop", "service": "catalog-api"}
+  },
+  "service_state": {"status": "degraded", "error_rate": 0.14, "replicas": 4, "ready": 4, "restarts": 0,
+                    "memory_limit": "512Mi", "revision": 41, "issue": "stale_cache"},
+  "transient_failures": 1,
+  "logs": [
+    "2026-09-28T09:41:02.113Z INFO  catalog-api started, schema v42",
+    "2026-09-28T09:41:05.920Z WARN  cache warm-up loaded 18234 entries from snapshot 7f3a9c21",
+    "2026-09-28T09:42:11.004Z ERROR cache checksum mismatch for key sku:88213 (expected v42, found v41)",
+    "2026-09-28T09:42:11.019Z ERROR GET /v1/items/88213 500 stale cache entry rejected",
+    "2026-09-28T09:42:12.551Z ERROR cache checksum mismatch for key sku:10077 (expected v42, found v41)",
+    "2026-09-28T09:42:12.570Z ERROR GET /v1/items/10077 500 stale cache entry rejected",
+    "2026-09-28T09:42:14.880Z WARN  p99 latency 1840ms on /v1/items"
+  ]
+}

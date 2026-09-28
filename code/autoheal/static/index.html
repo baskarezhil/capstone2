@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIOps Incident Console</title>
+<style>
+:root {
+  --bg: #f4f3ef; --panel: #fffdf9; --panel-2: #efece4; --text: #14213d; --muted: #5a6475; --line: #ddd8cc;
+  --accent: #1d6f6b; --accent-soft: #d6ecea; --warn: #b34a17; --warn-soft: #fbe3d3; --danger: #b42318;
+  --danger-soft: #fde2df; --ok: #1d6f6b; --ok-soft: #d6ecea; --info: #2f5aa8; --info-soft: #dce5f5;
+  --violet: #5b3fb8; --code: #14213d; --code-text: #e8edf5; --shadow: 0 1px 2px rgba(20,33,61,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1627; --panel: #16203a; --panel-2: #1c2847; --text: #e8edf5; --muted: #9aa7bd; --line: #2a3a60;
+    --accent: #5cc2ba; --accent-soft: #173a3c; --warn: #f08a4b; --warn-soft: #3a2618; --danger: #ff8a80;
+    --danger-soft: #3a1c1c; --ok: #5cc2ba; --ok-soft: #173a3c; --info: #8fb1ff; --info-soft: #1f2d52;
+    --violet: #b9a6ff; --code: #0b1120; --code-text: #d7deea; --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1627; --panel: #16203a; --panel-2: #1c2847; --text: #e8edf5; --muted: #9aa7bd; --line: #2a3a60;
+  --accent: #5cc2ba; --accent-soft: #173a3c; --warn: #f08a4b; --warn-soft: #3a2618; --danger: #ff8a80;
+  --danger-soft: #3a1c1c; --ok: #5cc2ba; --ok-soft: #173a3c; --info: #8fb1ff; --info-soft: #1f2d52;
+  --violet: #b9a6ff; --code: #0b1120; --code-text: #d7deea; --shadow: none;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--panel); }
+header h1 { font-size: 17px; margin: 0; font-weight: 650; letter-spacing: .1px; }
+header .sub { color: var(--muted); font-size: 13px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.seg button.on { background: var(--accent); color: #fff; }
+.seg button:disabled { opacity: .45; cursor: not-allowed; }
+main { display: grid; grid-template-columns: 300px minmax(0, 1fr) 380px; gap: 16px; padding: 16px 24px 32px; max-width: 1680px; margin: 0 auto; }
+@media (max-width: 1250px) { main { grid-template-columns: 280px minmax(0, 1fr); } #right { grid-column: 1 / -1; } }
+@media (max-width: 760px) { main { grid-template-columns: minmax(0, 1fr); padding: 12px 16px 24px; } header { padding: 12px 16px; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; box-shadow: var(--shadow); min-width: 0; }
+.panel + .panel { margin-top: 16px; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin: 0 0 12px; font-weight: 650; }
+.scn { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 10px; background: var(--panel); }
+.scn .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.scn b { font-size: 14px; }
+.scn p { margin: 6px 0 10px; color: var(--muted); font-size: 13px; }
+.btn { border: 1px solid var(--line); background: var(--panel-2); color: var(--text); border-radius: 8px; padding: 7px 14px;
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn.approve { background: var(--ok); color: #fff; border-color: var(--ok); }
+.btn.reject { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+.pill { display: inline-block; font-size: 12px; font-weight: 650; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.pill.P1 { background: var(--danger-soft); color: var(--danger); } .pill.P2 { background: var(--warn-soft); color: var(--warn); }
+.st-running { background: var(--info-soft); color: var(--info); } .st-awaiting_approval { background: var(--warn-soft); color: var(--warn); }
+.st-closed { background: var(--ok-soft); color: var(--ok); } .st-escalated, .st-error { background: var(--danger-soft); color: var(--danger); }
+.hist { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.hist:hover, .hist.on { background: var(--panel-2); }
+.hist code { font-size: 12px; }
+.inc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.inc-head .id { font-family: Consolas, "JetBrains Mono", monospace; font-size: 15px; font-weight: 650; }
+.inc-head .meta { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.empty { color: var(--muted); padding: 40px 12px; text-align: center; }
+ol.tl { list-style: none; margin: 0; padding: 0; }
+ol.tl li { padding: 7px 10px 7px 12px; border-left: 3px solid var(--line); margin-bottom: 4px; font-size: 14px;
+  background: var(--panel-2); border-radius: 0 6px 6px 0; overflow-wrap: anywhere; }
+li.k-sup { border-color: var(--violet); } li.k-agent { border-color: var(--info); } li.k-risk { border-color: var(--warn); }
+li.k-ok { border-color: var(--ok); } li.k-bad { border-color: var(--danger); } li.k-guard { border-color: var(--warn); background: var(--warn-soft); }
+li.k-pause { border-color: var(--warn); font-weight: 600; }
+.spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--info); border-right-color: transparent; border-radius: 50%; animation: s .8s linear infinite; vertical-align: -1px; }
+@keyframes s { to { transform: rotate(360deg); } }
+.card { border: 2px solid var(--warn); border-radius: 12px; padding: 16px; margin-top: 16px; background: var(--panel); }
+.card h3 { margin: 0 0 4px; font-size: 16px; color: var(--warn); }
+.card dl { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 6px 12px; margin: 12px 0; font-size: 14px; }
+.card dt { color: var(--muted); } .card dd { margin: 0; overflow-wrap: anywhere; }
+pre { background: var(--code); color: var(--code-text); padding: 10px 12px; border-radius: 8px; font: 13px/1.45 Consolas, "JetBrains Mono", monospace;
+  white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+pre .add { color: #7ee2a8; } pre .del { color: #ff9e9e; }
+.form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+@media (max-width: 760px) { .form { grid-template-columns: minmax(0, 1fr); } .card dl { grid-template-columns: minmax(0, 1fr); } }
+label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 3px; }
+input { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); font: inherit; font-size: 14px; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tile { background: var(--panel-2); border-radius: 8px; padding: 10px; }
+.tile .v { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.tile .l { font-size: 12px; color: var(--muted); }
+.audit { max-height: 560px; overflow: auto; }
+.aud { padding: 8px 2px; border-bottom: 1px solid var(--line); }
+.aud .when { font-size: 12px; color: var(--muted); }
+.aud .ev { font-family: Consolas, "JetBrains Mono", monospace; font-size: 13px; font-weight: 650; margin: 2px 0; }
+.aud .ev.k-human { color: var(--warn); } .aud .ev.k-deny { color: var(--danger); }
+.aud .det { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; font-family: Consolas, monospace; }
+.chain { font-size: 13px; margin-bottom: 8px; }
+.err { background: var(--danger-soft); color: var(--danger); padding: 10px 12px; border-radius: 8px; margin-top: 12px; font-size: 14px; }
+.toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg);
+  padding: 10px 16px; border-radius: 8px; font-size: 14px; display: none; max-width: calc(100% - 32px); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>CloudScale AIOps · Incident Console</h1>
+    <div class="sub">Pod 2 prototype · LangGraph + MCP + HITL · simulated EKS / AKS clusters</div>
+  </div>
+  <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+    <span class="sub">Reasoning</span>
+    <div class="seg" id="mode"><button data-m="mock">MockLLM</button><button data-m="openai">OpenAI</button></div>
+  </div>
+</header>
+
+<main>
+  <section id="left">
+    <div class="panel"><h2>Scenarios</h2><div id="scenarios"></div></div>
+    <div class="panel"><h2>Recent incidents</h2><div id="history"><div class="sub">None yet</div></div></div>
+  </section>
+
+  <section id="center">
+    <div class="panel">
+      <div id="incident"><div class="empty">Run a scenario to open an incident.<br>Destructive fixes will stop here and wait for you, the SRE.</div></div>
+    </div>
+  </section>
+
+  <section id="right">
+    <div class="panel"><h2>Metrics (this server)</h2><div class="tiles" id="metrics"></div></div>
+    <div class="panel"><h2>Audit trail</h2><div id="chain" class="chain sub">Select an incident</div><div class="audit" id="audit" role="list"></div></div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v; else if (k === "text") n.textContent = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) n.append(k);
+  return n;
+};
+const api = async (path, body) => {
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+};
+const toast = (msg) => { const t = $("#toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = "none", 4000); };
+let current = null, polling = null, lastStatus = null;
+const STATUS = { running: "Running", awaiting_approval: "Awaiting SRE approval", closed: "Closed", escalated: "Escalated to on-call", error: "Error" };
+const statusPill = (s) => el("span", { class: `pill st-${s}`, text: STATUS[s] || s });
+
+function kindOf(line) {
+  if (/^\s*🛡/.test(line)) return "k-guard";
+  if (/^🟣/.test(line)) return "k-sup";
+  if (/^🔵/.test(line)) return "k-agent";
+  if (/^🔴/.test(line)) return "k-risk";
+  if (/^(🟢|✅|🏁|▶)/.test(line)) return "k-ok";
+  if (/^(❌|⛔|📟|\s*✖)/.test(line)) return "k-bad";
+  if (/^(⏸|✏)/.test(line)) return "k-pause";
+  return "";
+}
+
+async function loadConfig() {
+  const c = await api("/api/config");
+  const box = $("#scenarios"); box.replaceChildren();
+  for (const s of c.scenarios) {
+    box.append(el("div", { class: "scn" },
+      el("div", { class: "top" }, el("b", { text: s.name }), el("span", { class: `pill ${s.severity}`, text: s.severity })),
+      el("p", { text: s.description }),
+      el("button", { class: "btn primary run", text: "Run", onclick: () => run(s.name) })));
+  }
+  setMode(c.mode, c.openai_available);
+}
+
+function setMode(mode, available) {
+  document.querySelectorAll("#mode button").forEach((b) => {
+    b.classList.toggle("on", b.dataset.m === mode);
+    if (b.dataset.m === "openai" && available === false) { b.disabled = true; b.title = "Set OPENAI_API_KEY in the terminal, then restart the UI"; }
+  });
+}
+document.querySelectorAll("#mode button").forEach((b) => b.addEventListener("click", async () => {
+  try { const r = await api("/api/mode", { mode: b.dataset.m }); setMode(r.mode); toast(`Reasoning: ${r.mode === "openai" ? "OpenAI gpt-4o-mini / gpt-4o" : "MockLLM (offline)"}`); }
+  catch (e) { toast(e.message); }
+}));
+
+async function run(name) {
+  try {
+    document.querySelectorAll(".run").forEach((b) => b.disabled = true);
+    const s = await api("/api/run", { scenario: name });
+    current = s.incident_id; lastStatus = null; render(s); startPolling();
+  } catch (e) { toast(e.message); document.querySelectorAll(".run").forEach((b) => b.disabled = false); }
+}
+
+function startPolling() {
+  clearInterval(polling);
+  polling = setInterval(async () => {
+    if (!current) return;
+    try {
+      const s = await api(`/api/incidents/${current}`);
+      render(s);
+      if (s.status !== "running") { clearInterval(polling); refreshSide(); }
+    } catch (e) { clearInterval(polling); toast(e.message); }
+  }, 700);
+}
+
+function renderDiff(text) {
+  const pre = el("pre");
+  for (const line of (text || "").split("\n")) {
+    pre.append(el("span", { class: line.startsWith("+") ? "add" : line.startsWith("-") ? "del" : "", text: line + "\n" }));
+  }
+  return pre;
+}
+
+function approvalCard(c) {
+  const pa = c.proposed_action || {};
+  const approver = el("input", { id: "approver", value: "sre.alice", "aria-label": "Approver" });
+  const comment = el("input", { id: "comment", placeholder: "optional", "aria-label": "Comment" });
+  const memory = el("input", { id: "memory", value: "2Gi", "aria-label": "Memory limit for modify" });
+  const decide = async (decision) => {
+    try {
+      document.querySelectorAll(".card .btn").forEach((b) => b.disabled = true);
+      const s = await api(`/api/incidents/${c.incident_id}/decision`, { decision, approver: approver.value, comment: comment.value, memory: memory.value });
+      render(s); startPolling();
+    } catch (e) { toast(e.message); document.querySelectorAll(".card .btn").forEach((b) => b.disabled = false); }
+  };
+  const rows = [["Target", c.target], ["Risk", c.risk], ["Why a human", c.hitl_reason],
+    ["Root cause", `${c.root_cause} (confidence ${c.confidence})`], ["Action", `${pa.tool} [${pa.intent || "-"}] · ${pa.patch_id}`],
+    ["Blast radius", c.blast_radius], ["Rollback", c.rollback_plan]];
+  const dl = el("dl");
+  for (const [k, v] of rows) if (v) { dl.append(el("dt", { text: k }), el("dd", { text: String(v) })); }
+  return el("div", { class: "card", role: "region", "aria-label": "SRE approval request" },
+    el("h3", { text: "🔒 SRE approval required" }),
+    el("div", { class: "sub", text: `${c.title} · expires in ${Math.round(c.expires_in_s / 60)} min` }),
+    dl,
+    el("label", { text: "Command preview" }), el("pre", { text: pa.command_preview || "" }),
+    c.diff ? el("div", { style: "margin-top:10px" }, el("label", { text: "Diff" }), renderDiff(c.diff)) : null,
+    (c.guardrail_findings || []).length ? el("div", { class: "err", text: `⚠ ${c.guardrail_findings.length} injected log line(s) were quarantined and withheld from the model.` }) : null,
+    el("div", { class: "form" },
+      el("div", {}, el("label", { for: "approver", text: "Approver" }), approver),
+      el("div", {}, el("label", { for: "comment", text: "Comment" }), comment),
+      el("div", {}, el("label", { for: "memory", text: "Modify: new memory limit" }), memory)),
+    el("div", { class: "actions" },
+      el("button", { class: "btn approve", text: "Approve", onclick: () => decide("approve") }),
+      el("button", { class: "btn", text: "Modify & re-plan", onclick: () => decide("modify") }),
+      el("button", { class: "btn reject", text: "Reject", onclick: () => decide("reject") })));
+}
+
+function render(s) {
+  const box = $("#incident"); box.replaceChildren();
+  box.append(el("div", { class: "inc-head" },
+    el("div", {}, el("div", { class: "id", text: s.incident_id }), el("div", { class: "meta", text: `${s.scenario} · ${s.target || ""} · ${s.tokens_used || 0} tokens` })),
+    el("div", {}, s.status === "running" ? el("span", { class: "spin", "aria-hidden": "true" }) : null, " ", statusPill(s.status))));
+  const ol = el("ol", { class: "tl", "aria-live": "polite" });
+  for (const line of s.timeline || []) ol.append(el("li", { class: kindOf(line), text: line.trim() }));
+  if (!(s.timeline || []).length) ol.append(el("li", { text: "Starting…" }));
+  box.append(ol);
+  if (s.error) box.append(el("div", { class: "err", text: s.error }));
+  if (s.approval_request) box.append(approvalCard(s.approval_request));
+  if (s.status !== "running") document.querySelectorAll(".run").forEach((b) => b.disabled = false);
+  if (s.status !== lastStatus) { lastStatus = s.status; refreshSide(); }
+}
+
+async function refreshSide() {
+  try {
+    const [m, hist] = await Promise.all([api("/api/metrics"), api("/api/incidents")]);
+    const pct = (x) => x == null ? "–" : `${Math.round(x * 100)}%`;
+    const tiles = [["Tokens", m.tokens_total.toLocaleString()], ["LLM cost", `$${m.llm_cost_usd.toFixed(4)}`],
+      ["Cache hit ratio (CR)", pct(m.cache_hit_ratio)], ["Tool failure rate (FR)", pct(m.tool_failure_rate)],
+      ["p95 step latency", m.agent_step_latency_p95_s == null ? "–" : `${m.agent_step_latency_p95_s.toFixed(2)} s`],
+      ["HITL requests", m.hitl_requests], ["Guardrail blocks", m.guardrail_blocks], ["Injections quarantined", m.injections_quarantined]];
+    $("#metrics").replaceChildren(...tiles.map(([l, v]) => el("div", { class: "tile" }, el("div", { class: "v", text: String(v) }), el("div", { class: "l", text: l }))));
+    $("#history").replaceChildren(...(hist.length ? hist.map((h) => el("div", { class: "hist" + (h.incident_id === current ? " on" : ""), onclick: () => { current = h.incident_id; lastStatus = null; api(`/api/incidents/${current}`).then((s) => { render(s); if (s.status === "running") startPolling(); }); } },
+      el("code", { text: `${h.incident_id.slice(-6)} · ${h.scenario}` }), statusPill(h.status))) : [el("div", { class: "sub", text: "None yet" })]));
+    if (current) {
+      const a = await api(`/api/incidents/${current}/audit`);
+      $("#chain").replaceChildren(el("span", { class: `pill ${a.chain_valid ? "st-closed" : "st-error"}`, text: a.chain_valid ? "Hash chain valid" : "Chain BROKEN" }),
+        document.createTextNode(` ${a.chain_records} records in log · ${a.entries.length} for this incident`));
+      const t = $("#audit"); t.replaceChildren();
+      for (const e of a.entries) {
+        const d = JSON.stringify(e.details);
+        const k = /^hitl\.(approved|rejected|modified|requested)/.test(e.event) ? " k-human" : /denied|blocked|quarantined|escalated|error/.test(e.event) ? " k-deny" : "";
+        t.append(el("div", { class: "aud", role: "listitem" },
+          el("div", { class: "when", text: `${e.ts.slice(11, 19)} · ${e.actor} · #${e.hash}` }),
+          el("div", { class: "ev" + k, text: e.event }),
+          el("div", { class: "det", text: d.length > 160 ? d.slice(0, 160) + "…" : d, title: d })));
+      }
+    }
+  } catch (e) { /* side panels are best-effort */ }
+}
+
+loadConfig().then(async () => {
+  const q = new URLSearchParams(location.search).get("incident");   // deep link: /?incident=INC-…
+  if (q) { current = q; const s = await api(`/api/incidents/${q}`); render(s); if (s.status === "running") startPolling(); }
+  refreshSide();
+}).catch((e) => toast(e.message));
+</script>
+</body>
+</html>

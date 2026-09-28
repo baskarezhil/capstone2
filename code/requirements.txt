@@ -1,0 +1,9 @@
+langgraph>=1.2,<2
+langgraph-checkpoint-sqlite>=3.1
+aiosqlite>=0.22
+fastmcp>=2.14,<3
+opentelemetry-sdk>=1.45
+pytest>=9
+litellm>=1.80                               # real models: AUTOHEAL_LLM=litellm
+# optional
+# opentelemetry-exporter-otlp-proto-http    # export spans to an OTel Collector / Tempo / LangSmith

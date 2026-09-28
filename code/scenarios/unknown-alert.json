@@ -1,0 +1,19 @@
+{
+  "name": "unknown-alert",
+  "description": "Unrecognised alert with weak evidence. Tier-1 model confidence is low → escalated to Tier-2; RCA confidence stays below threshold → no autonomous action, page on-call (fail closed).",
+  "alert": {
+    "rule": "EtcdLeaderChurn",
+    "severity": "P2",
+    "summary": "etcd leader changes > 3 in 15m on EKS",
+    "description": "increase(etcd_server_leader_changes_seen_total[15m]) > 3",
+    "labels": {"cluster": "aws-eks-prod-use1", "namespace": "platform", "service": "etcd-monitor"}
+  },
+  "service_state": {"status": "degraded", "error_rate": 0.03, "replicas": 3, "ready": 3, "restarts": 0,
+                    "memory_limit": "256Mi", "revision": 3, "issue": "unknown"},
+  "transient_failures": 0,
+  "logs": [
+    "2026-09-28T12:00:01.000Z INFO  leader election: new leader member-2",
+    "2026-09-28T12:03:11.000Z INFO  leader election: new leader member-0",
+    "2026-09-28T12:07:45.000Z INFO  leader election: new leader member-1"
+  ]
+}
